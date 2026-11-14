@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH?.replace(/\/$/, "") || "";
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
-  "https://mohamed-youssef74.github.io/mohamed-youssef-portfolio/";
+  "https://kthiriyoussef.github.io/Portfolio-/";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -24,7 +25,7 @@ export const metadata: Metadata = {
     description: "Full-stack software engineering, applied AI and DevOps.",
   },
   robots: { index: true, follow: true },
-  icons: { icon: "/favicon.svg" },
+  icons: { icon: `${basePath}/favicon.svg` },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

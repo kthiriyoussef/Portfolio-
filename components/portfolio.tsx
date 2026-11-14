@@ -62,6 +62,7 @@ function ProjectArt({ type }: { type: string }) {
   const caption: Record<string, string> = {
     health: "Care · Retrieval · Validation",
     learning: "Learn · Track · Certify",
+    crm: "Customers · Quotations · Operations",
     recruitment: "Discover · Evaluate · Compare",
     event: "Plan · Reserve · Coordinate",
     automotive: "Inventory · Sales · Customers",
@@ -164,11 +165,12 @@ export default function Portfolio() {
     setMenuOpen(false);
     document.getElementById(id)?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" });
   };
-  const filteredProjects = content.projects.filter((project) => projectFilter === "All" || projectFilter === "Tous les projets" || project.filter.includes(projectFilter));
+  const projectFilterKey = ["All projects", "Full-stack", "Applied AI", "DevOps", "Other"][content.filters.indexOf(projectFilter)];
+  const filteredProjects = content.projects.filter((project) => !projectFilterKey || projectFilterKey === "All projects" || project.filter.includes(projectFilterKey));
   const categories = [...new Set(content.skillGroups.map((group) => group.name))];
   const skillNameFor = (index: number) => locale === "fr"
-    ? ["Backend et API", "Frontend", "IA et données", "DevOps et infrastructure", "Bases de données", "Sécurité et tests", "Architecture et méthodes"][index]
-    : ["Backend & APIs", "Frontend", "AI & data", "DevOps & infrastructure", "Databases", "Security & testing", "Architecture & methods"][index];
+    ? ["Backend et API", "Frontend", "Bases de données", "IA et apprentissage automatique", "DevOps et cloud"][index]
+    : ["Backend & APIs", "Frontend", "Databases", "AI & Machine Learning", "DevOps & Cloud"][index];
   const visibleSkillGroups = content.skillGroups.filter((_, index) => skillFilter === "All" || skillFilter === "Tout" || skillNameFor(index) === skillFilter);
 
   return (
@@ -217,6 +219,10 @@ export default function Portfolio() {
               <a className="button-secondary" href="#contact" onClick={(event) => { event.preventDefault(); navTo("contact"); }}><MessageCircle size={14} />{content.connect}</a>
             </motion.div>
             <motion.div className="hero-socials" variants={appear}><ExternalSocials locale={locale} /></motion.div>
+            <motion.div className="hero-proofline" variants={appear}>
+              <span>ESPRIT <i /> TUNISIA</span>
+              <span>{locale === "fr" ? "STAGE PFE · 6 MOIS" : "PFE INTERNSHIP · 6 MONTHS"}</span>
+            </motion.div>
           </motion.div>
           <CodeVisual />
         </div>
@@ -224,13 +230,22 @@ export default function Portfolio() {
       </section>
 
       <Section id="about" eyebrow={content.aboutEyebrow} title={content.aboutTitle} intro={content.aboutDescription} variants={appear}>
-        <div className="about-grid">
-          {content.pillars.map((pillar, index) => {
-            const Icon = pillarIcons[index];
-            return <motion.article className="pillar-card glass-card" key={pillar.title} variants={appear}>
-              <div className="pillar-icon"><Icon size={19} /></div><h3>{pillar.title}</h3><p>{pillar.description}</p>
-            </motion.article>;
-          })}
+        <div className="about-editorial">
+          <motion.aside className="about-education glass-card" variants={appear}>
+            <span className="project-index">{locale === "fr" ? "FORMATION / 01" : "EDUCATION / 01"}</span>
+            <h3>{content.education[0].institution}</h3>
+            <p>{content.education[0].degree}</p>
+            <span className="about-education-date">{content.education[0].dates}</span>
+            <span className="about-education-location">{content.education[0].location}</span>
+          </motion.aside>
+          <div className="about-grid">
+            {content.pillars.map((pillar, index) => {
+              const Icon = pillarIcons[index];
+              return <motion.article className="pillar-card glass-card" key={pillar.title} variants={appear}>
+                <div className="pillar-icon"><Icon size={19} /></div><h3>{pillar.title}</h3><p>{pillar.description}</p>
+              </motion.article>;
+            })}
+          </div>
         </div>
         <motion.blockquote className="philosophy" variants={appear}>“{content.philosophy}”</motion.blockquote>
       </Section>
