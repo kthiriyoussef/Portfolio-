@@ -6,7 +6,16 @@ import {
   Code2, Download, ExternalLink, Github, Languages, Linkedin, Mail,
   MapPin, Menu, MessageCircle, Network, Printer, Send, ShieldCheck, X,
 } from "lucide-react";
-import { AnimatePresence, motion, useReducedMotion, type Variants } from "framer-motion";
+import {
+  AnimatePresence,
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useScroll,
+  useSpring,
+  useTransform,
+  type Variants,
+} from "framer-motion";
 import { copy, personal, type Locale } from "@/lib/portfolio-data";
 
 const sectionIds = ["home", "about", "experience", "projects", "skills", "education", "contact"];
@@ -28,15 +37,54 @@ function ExternalSocials({ locale }: { locale: Locale }) {
   ))}</>;
 }
 
+function moveMagneticTarget(event: React.PointerEvent<HTMLElement>) {
+  if (event.pointerType !== "mouse") return;
+  const bounds = event.currentTarget.getBoundingClientRect();
+  event.currentTarget.style.setProperty("--mag-x", `${(event.clientX - bounds.left - bounds.width / 2) * 0.08}px`);
+  event.currentTarget.style.setProperty("--mag-y", `${(event.clientY - bounds.top - bounds.height / 2) * 0.08}px`);
+}
+
+function resetMagneticTarget(event: React.PointerEvent<HTMLElement>) {
+  event.currentTarget.style.setProperty("--mag-x", "0px");
+  event.currentTarget.style.setProperty("--mag-y", "0px");
+}
+
 function CodeVisual() {
   const reducedMotion = useReducedMotion();
+  const pointerX = useMotionValue(0);
+  const pointerY = useMotionValue(0);
+  const smoothX = useSpring(pointerX, { stiffness: 90, damping: 22, mass: 0.7 });
+  const smoothY = useSpring(pointerY, { stiffness: 90, damping: 22, mass: 0.7 });
+  const rotateY = useTransform(smoothX, [-0.5, 0.5], [4, -4]);
+  const rotateX = useTransform(smoothY, [-0.5, 0.5], [-3, 3]);
   const float = (distance: number, duration: number) => reducedMotion
     ? { y: 0 }
     : { y: [0, distance, 0], transition: { duration, repeat: Infinity, ease: "easeInOut" as const } };
+  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (reducedMotion || event.pointerType !== "mouse") return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    pointerX.set((event.clientX - bounds.left) / bounds.width - 0.5);
+    pointerY.set((event.clientY - bounds.top) / bounds.height - 0.5);
+  };
+  const resetPointer = () => {
+    pointerX.set(0);
+    pointerY.set(0);
+  };
   return (
-    <div className="hero-visual" aria-label="Illustrated software editor and deployment status">
+    <div
+      className="hero-visual"
+      aria-label="Illustrated software editor and deployment status"
+      onPointerMove={onPointerMove}
+      onPointerLeave={resetPointer}
+    >
       <div className="visual-glow" />
-      <motion.div className="code-window" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .75, delay: .22 }}>
+      <motion.div
+        className="code-window"
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: reducedMotion ? 0 : .75, delay: reducedMotion ? 0 : .22 }}
+        style={{ rotateX, rotateY }}
+      >
         <div className="window-top"><div className="window-dots"><i /><i /><i /></div><span>application.ts</span><span>TS</span></div>
         <div className="code-body" aria-hidden="true">
           <div className="code-line"><span className="line-number">1</span><span><span className="code-purple">const</span> engineer <span className="code-muted">=</span> {"{"}</span></div>
@@ -55,6 +103,69 @@ function CodeVisual() {
       <motion.div className="float-chip chip-b" animate={float(6, 5)}><BrainCircuit className="chip-icon" size={14} /> Applied AI</motion.div>
       <motion.div className="float-chip chip-c" animate={float(-4, 4)}><Code2 className="chip-icon" size={14} /> Full-stack</motion.div>
     </div>
+  );
+}
+
+function CustomCursor() {
+  const reducedMotion = useReducedMotion();
+  const cursorX = useMotionValue(-100);
+  const cursorY = useMotionValue(-100);
+  const x = useSpring(cursorX, { stiffness: 500, damping: 38, mass: 0.35 });
+  const y = useSpring(cursorY, { stiffness: 500, damping: 38, mass: 0.35 });
+  const [enabled, setEnabled] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const [label, setLabel] = useState("");
+
+  useEffect(() => {
+    const pointer = window.matchMedia("(hover: hover) and (pointer: fine)");
+    if (reducedMotion || !pointer.matches) {
+      setEnabled(false);
+      return;
+    }
+
+    setEnabled(true);
+    document.documentElement.classList.add("has-custom-cursor");
+    const onPointerMove = (event: PointerEvent) => {
+      cursorX.set(event.clientX);
+      cursorY.set(event.clientY);
+      setVisible(true);
+    };
+    const onPointerOver = (event: PointerEvent) => {
+      if (!(event.target instanceof Element)) return;
+      const target = event.target.closest<HTMLElement>("[data-cursor], a, button");
+      if (!target) {
+        setLabel("");
+        return;
+      }
+      setLabel(target.dataset.cursor || (target.matches(".project-open") ? "VIEW PROJECT" : "EXPLORE"));
+    };
+    const onPointerOut = (event: PointerEvent) => {
+      if (event.relatedTarget instanceof Element && event.relatedTarget.closest("[data-cursor], a, button")) return;
+      setLabel("");
+    };
+
+    window.addEventListener("pointermove", onPointerMove, { passive: true });
+    document.addEventListener("pointerover", onPointerOver, { passive: true });
+    document.addEventListener("pointerout", onPointerOut, { passive: true });
+    return () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      document.removeEventListener("pointerover", onPointerOver);
+      document.removeEventListener("pointerout", onPointerOut);
+      document.documentElement.classList.remove("has-custom-cursor");
+    };
+  }, [cursorX, cursorY, reducedMotion]);
+
+  if (!enabled) return null;
+  return (
+    <motion.div
+      className={`custom-cursor ${visible ? "is-visible" : ""} ${label ? "is-hovering" : ""}`}
+      aria-hidden="true"
+      style={{ x, y }}
+    >
+      <span className="cursor-ring" />
+      <span className="cursor-dot" />
+      <span className="cursor-label">{label}</span>
+    </motion.div>
   );
 }
 
@@ -98,12 +209,38 @@ export default function Portfolio() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [showTop, setShowTop] = useState(false);
   const modalCloseRef = useRef<HTMLButtonElement>(null);
+  const shellRef = useRef<HTMLElement>(null);
+  const experienceRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress: experienceScroll } = useScroll({
+    target: experienceRef,
+    offset: ["start 72%", "end 48%"],
+  });
+  const timelineProgress = useSpring(experienceScroll, { stiffness: 90, damping: 28 });
   const content = copy[locale];
   const reducedMotion = useReducedMotion();
   const appear = useMemo(() => ({
     hidden: { opacity: 0, y: reducedMotion ? 0 : 20 },
     visible: { opacity: 1, y: 0, transition: { duration: reducedMotion ? 0 : .55, ease: "easeOut" as const } },
   }), [reducedMotion]);
+  useEffect(() => {
+    const shell = shellRef.current;
+    if (!shell || window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+      !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+    let frame = 0;
+    const onPointerMove = (event: PointerEvent) => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        shell.style.setProperty("--pointer-x", `${event.clientX}px`);
+        shell.style.setProperty("--pointer-y", `${event.clientY + window.scrollY}px`);
+        frame = 0;
+      });
+    };
+    window.addEventListener("pointermove", onPointerMove, { passive: true });
+    return () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, []);
 
   useEffect(() => {
     const onScroll = () => {
@@ -174,7 +311,10 @@ export default function Portfolio() {
   const visibleSkillGroups = content.skillGroups.filter((_, index) => skillFilter === "All" || skillFilter === "Tout" || skillNameFor(index) === skillFilter);
 
   return (
-    <main className="site-shell">
+    <main className="site-shell" ref={shellRef}>
+      <div className="ambient-orb ambient-orb-one" aria-hidden="true" />
+      <div className="ambient-orb ambient-orb-two" aria-hidden="true" />
+      <CustomCursor />
       <nav className={`navigation ${scrolled ? "is-scrolled" : ""}`} aria-label={locale === "fr" ? "Navigation principale" : "Main navigation"}>
         <div className="nav-inner">
           <a className="brand-mark" href="#home" onClick={() => navTo("home")} aria-label="Mohamed Youssef KTHIRI — home">
@@ -184,6 +324,7 @@ export default function Portfolio() {
             {content.nav.map((label, index) => (
               <a className={`nav-link ${activeSection === sectionIds[index] ? "active" : ""}`} href={`#${sectionIds[index]}`} key={sectionIds[index]} onClick={(event) => { event.preventDefault(); navTo(sectionIds[index]); }}>
                 {label}
+                {activeSection === sectionIds[index] && <motion.span className="nav-active-indicator" layoutId="nav-active-indicator" />}
               </a>
             ))}
           </div>
@@ -204,7 +345,9 @@ export default function Portfolio() {
         <div className="content-width hero-grid">
           <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: reducedMotion ? 0 : .1 } } }}>
             <motion.div className="hero-greeting" variants={appear}>{content.greeting}</motion.div>
-            <motion.h1 className="hero-title" variants={appear}><span>{personal.firstName}</span><span className="surname">{personal.surname}</span></motion.h1>
+            <motion.h1 className="hero-title" variants={appear}>
+              <span>{personal.firstName}</span><span className="surname">{personal.surname}</span>
+            </motion.h1>
             <motion.p className="hero-role" variants={appear}>{personal.title}</motion.p>
             <motion.div className="hero-rotator" aria-live="polite" variants={appear}>
               <AnimatePresence mode="wait" initial={false}>
@@ -214,9 +357,9 @@ export default function Portfolio() {
             <motion.p className="hero-description" variants={appear}>{content.heroDescription}</motion.p>
             <motion.div className="availability" variants={appear}><span className="availability-dot" />{content.availability} <span>— {personal.availability}</span></motion.div>
             <motion.div className="hero-actions" variants={appear}>
-              <a className="button-primary" href="#projects" onClick={(event) => { event.preventDefault(); navTo("projects"); }}>{content.explore}<ArrowRight size={15} /></a>
-              <a className="button-secondary" href={personal.cvPath}><Download size={14} />{locale === "fr" ? "Télécharger mon CV" : "Download CV"}</a>
-              <a className="button-secondary" href="#contact" onClick={(event) => { event.preventDefault(); navTo("contact"); }}><MessageCircle size={14} />{content.connect}</a>
+              <a className="button-primary" href="#projects" onPointerMove={moveMagneticTarget} onPointerLeave={resetMagneticTarget} onClick={(event) => { event.preventDefault(); navTo("projects"); }}>{content.explore}<ArrowRight size={15} /></a>
+              <a className="button-secondary" href={personal.cvPath} onPointerMove={moveMagneticTarget} onPointerLeave={resetMagneticTarget}><Download size={14} />{locale === "fr" ? "Télécharger mon CV" : "Download CV"}</a>
+              <a className="button-secondary" href="#contact" onPointerMove={moveMagneticTarget} onPointerLeave={resetMagneticTarget} onClick={(event) => { event.preventDefault(); navTo("contact"); }}><MessageCircle size={14} />{content.connect}</a>
             </motion.div>
             <motion.div className="hero-socials" variants={appear}><ExternalSocials locale={locale} /></motion.div>
             <motion.div className="hero-proofline" variants={appear}>
@@ -251,7 +394,8 @@ export default function Portfolio() {
       </Section>
 
       <Section id="experience" eyebrow={content.experienceEyebrow} title={content.experienceTitle} intro={content.experienceDescription} variants={appear}>
-        <div className="experience-list">
+        <div className="experience-list" ref={experienceRef}>
+          <motion.span className="experience-progress" aria-hidden="true" style={{ scaleY: timelineProgress }} />
           {content.experiences.map((experience, index) => {
             const expanded = expandedExperience === index;
             return <motion.article className="experience-item" key={experience.company} variants={appear} aria-expanded={expanded}>
@@ -281,7 +425,30 @@ export default function Portfolio() {
         <motion.div layout className="project-grid">
           <AnimatePresence mode="popLayout">
             {filteredProjects.map((project, index) => (
-              <motion.article className={`project-card glass-card ${index === 0 && projectFilter === "All" || index === 0 && projectFilter === "Tous les projets" ? "featured" : ""}`} key={project.number} layout initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 9 }} transition={{ duration: reducedMotion ? 0 : .25 }}>
+              <motion.article
+                className={`project-card glass-card ${index === 0 && projectFilter === "All" || index === 0 && projectFilter === "Tous les projets" ? "featured" : ""}`}
+                key={project.number}
+                layout
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, amount: .16 }}
+                variants={appear}
+                exit={{ opacity: 0, y: 9 }}
+                transition={{ duration: reducedMotion ? 0 : .4, ease: "easeOut" }}
+                data-cursor={locale === "fr" ? "DÉCOUVRIR" : "DISCOVER"}
+                onPointerMove={(event) => {
+                  if (event.pointerType !== "mouse") return;
+                  const bounds = event.currentTarget.getBoundingClientRect();
+                  event.currentTarget.style.setProperty("--spot-x", `${event.clientX - bounds.left}px`);
+                  event.currentTarget.style.setProperty("--spot-y", `${event.clientY - bounds.top}px`);
+                  event.currentTarget.style.setProperty("--tilt-x", `${((event.clientX - bounds.left) / bounds.width - .5) * 3}deg`);
+                  event.currentTarget.style.setProperty("--tilt-y", `${((event.clientY - bounds.top) / bounds.height - .5) * -3}deg`);
+                }}
+                onPointerLeave={(event) => {
+                  event.currentTarget.style.setProperty("--tilt-x", "0deg");
+                  event.currentTarget.style.setProperty("--tilt-y", "0deg");
+                }}
+              >
                 <ProjectArt type={project.visual} />
                 <div className="project-info">
                   <span className="project-index">PROJECT / {project.number}</span>
@@ -382,12 +549,35 @@ function Section({ id, eyebrow, title, intro, variants, children }: {
   variants: Variants;
   children: React.ReactNode;
 }) {
+  const words = title.split(/\s+/);
   return <section className="section" id={id}>
     <div className="content-width">
-      <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, amount: .13 }} variants={variants}>
-        <span className="eyebrow">{eyebrow}</span><h2 className="section-heading">{title}</h2>{intro && <p className="section-intro">{intro}</p>}
+      <motion.div
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: .13 }}
+        variants={{ visible: { transition: { staggerChildren: .055 } } }}
+      >
+        <motion.span className="eyebrow" variants={variants}>{eyebrow}</motion.span>
+        <motion.h2
+          className="section-heading"
+          variants={{ hidden: {}, visible: { transition: { staggerChildren: .045 } } }}
+        >
+          {words.map((word, index) => (
+            <motion.span className="heading-word" variants={variants} key={`${word}-${index}`}>{word}</motion.span>
+          ))}
+        </motion.h2>
+        {intro && <motion.p className="section-intro" variants={variants}>{intro}</motion.p>}
       </motion.div>
-      {children}
+      <motion.div
+        className="section-content"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: .08 }}
+        variants={{ hidden: {}, visible: { transition: { staggerChildren: .08, delayChildren: .04 } } }}
+      >
+        {children}
+      </motion.div>
     </div>
   </section>;
 }
