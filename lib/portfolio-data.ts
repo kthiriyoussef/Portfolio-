@@ -11,7 +11,7 @@ export const personal = {
   email: "kthiriyoussef09@gmail.com",
   phone: "+216 90 619 719",
   availability: "January 2027",
-  cvPath: `${basePath}/cv/`,
+  cvPath: `${basePath}/cv.pdf`,
   social: {
     linkedin: "",
     github: "",

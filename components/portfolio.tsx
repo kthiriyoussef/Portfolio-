@@ -333,7 +333,7 @@ export default function Portfolio() {
               <button type="button" aria-pressed={locale === "en"} onClick={() => { setLocale("en"); setProjectFilter("All"); setSkillFilter("All"); document.documentElement.lang = "en"; }}>EN</button>
               <button type="button" aria-pressed={locale === "fr"} onClick={() => { setLocale("fr"); setProjectFilter("Tous les projets"); setSkillFilter("Tout"); document.documentElement.lang = "fr"; }}>FR</button>
             </div>
-            <a className="button-primary nav-cv" href={personal.cvPath}><Download size={13} /> CV</a>
+            <a className="button-primary nav-cv" href={personal.cvPath} download="Mohamed_Youssef_Kthiri_CV.pdf"><Download size={13} /> CV</a>
             <button className="menu-toggle" type="button" aria-label={menuOpen ? "Close menu" : "Open menu"} aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}>
               {menuOpen ? <X size={17} /> : <Menu size={17} />}
             </button>
@@ -358,7 +358,7 @@ export default function Portfolio() {
             <motion.div className="availability" variants={appear}><span className="availability-dot" />{content.availability} <span>— {personal.availability}</span></motion.div>
             <motion.div className="hero-actions" variants={appear}>
               <a className="button-primary" href="#projects" onPointerMove={moveMagneticTarget} onPointerLeave={resetMagneticTarget} onClick={(event) => { event.preventDefault(); navTo("projects"); }}>{content.explore}<ArrowRight size={15} /></a>
-              <a className="button-secondary" href={personal.cvPath} onPointerMove={moveMagneticTarget} onPointerLeave={resetMagneticTarget}><Download size={14} />{locale === "fr" ? "Télécharger mon CV" : "Download CV"}</a>
+              <a className="button-secondary" href={personal.cvPath} download="Mohamed_Youssef_Kthiri_CV.pdf" onPointerMove={moveMagneticTarget} onPointerLeave={resetMagneticTarget}><Download size={14} />{locale === "fr" ? "Télécharger mon CV" : "Download CV"}</a>
               <a className="button-secondary" href="#contact" onPointerMove={moveMagneticTarget} onPointerLeave={resetMagneticTarget} onClick={(event) => { event.preventDefault(); navTo("contact"); }}><MessageCircle size={14} />{content.connect}</a>
             </motion.div>
             <motion.div className="hero-socials" variants={appear}><ExternalSocials locale={locale} /></motion.div>
@@ -498,7 +498,7 @@ export default function Portfolio() {
             <ContactDetail Icon={MessageCircle} label={locale === "fr" ? "Téléphone" : "Phone"} value={personal.phone} href={`tel:${personal.phone.replaceAll(" ", "")}`} />
             <ContactDetail Icon={MapPin} label={locale === "fr" ? "Localisation" : "Location"} value={personal.location} />
             <div className="contact-socials"><ExternalSocials locale={locale} /></div>
-            <a className="button-secondary" style={{ justifySelf: "start", marginTop: 7 }} href={personal.cvPath}><Printer size={14} />{locale === "fr" ? "Imprimer / enregistrer le CV" : "Print / save CV"}</a>
+            <a className="button-secondary" style={{ justifySelf: "start", marginTop: 7 }} href={personal.cvPath} download="Mohamed_Youssef_Kthiri_CV.pdf"><Download size={14} />{locale === "fr" ? "Télécharger le CV PDF" : "Download CV PDF"}</a>
           </div>
           <ContactForm content={content} />
         </div>

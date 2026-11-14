@@ -21,7 +21,7 @@ $env:NEXT_PUBLIC_SITE_URL = "https://kthiriyoussef.github.io/Portfolio-/"
 npm run build
 ```
 
-The static site is generated in `out/`. Next.js uses a trailing slash for static routes, and the résumé is available at `/Portfolio-/cv/`.
+The static site is generated in `out/`. Next.js uses a trailing slash for static routes. The printable résumé page is available at `/Portfolio-/cv/`, and the downloadable PDF is at `/Portfolio-/cv.pdf`.
 
 ## Contact form on static hosting
 
