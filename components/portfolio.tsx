@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
   ArrowDown, ArrowRight, ArrowUp, BrainCircuit, Check, ChevronDown,
-  Code2, Download, ExternalLink, Github, Languages, Linkedin, Mail,
-  MapPin, Menu, MessageCircle, Network, Printer, Send, ShieldCheck, X,
+  Code2, Download, Github, Languages, Linkedin, Mail,
+  MapPin, Menu, MessageCircle, Network, Send, ShieldCheck, X,
 } from "lucide-react";
 import {
   AnimatePresence,
@@ -22,7 +23,6 @@ const sectionIds = ["home", "about", "experience", "projects", "skills", "educat
 const pillarIcons = [Code2, BrainCircuit, ShieldCheck];
 
 type LocalizedContent = (typeof copy)["en"];
-type Project = LocalizedContent["projects"][number];
 
 function ExternalSocials({ locale }: { locale: Locale }) {
   const links = [
@@ -35,6 +35,24 @@ function ExternalSocials({ locale }: { locale: Locale }) {
       <Icon size={14} /> {label}<span className="sr-only"> ({locale === "fr" ? "ouvre un nouvel onglet" : "opens in a new tab"})</span>
     </a>
   ))}</>;
+}
+
+function HeroRotator({ lines, reducedMotion, variants }: {
+  lines: string[];
+  reducedMotion: boolean | null;
+  variants: Variants;
+}) {
+  const [line, setLine] = useState(0);
+  useEffect(() => {
+    if (reducedMotion) return;
+    const timer = window.setInterval(() => setLine((current) => (current + 1) % lines.length), 3600);
+    return () => window.clearInterval(timer);
+  }, [lines, reducedMotion]);
+  return <motion.div className="hero-rotator" aria-live="polite" variants={variants}>
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.span key={line} initial={{ opacity: 0, y: 7 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -7 }} transition={{ duration: reducedMotion ? 0 : .24 }}>{lines[line]}</motion.span>
+    </AnimatePresence>
+  </motion.div>;
 }
 
 function moveMagneticTarget(event: React.PointerEvent<HTMLElement>) {
@@ -78,6 +96,9 @@ function CodeVisual() {
       onPointerLeave={resetPointer}
     >
       <div className="visual-glow" />
+      <div className="visual-orbit visual-orbit-one" aria-hidden="true" />
+      <div className="visual-orbit visual-orbit-two" aria-hidden="true" />
+      <div className="visual-orbit-core" aria-hidden="true"><Network size={20} /></div>
       <motion.div
         className="code-window"
         initial={{ opacity: 0, y: 18 }}
@@ -171,28 +192,39 @@ function CustomCursor() {
 
 function ProjectArt({ type }: { type: string }) {
   const caption: Record<string, string> = {
-    health: "Care · Retrieval · Validation",
-    learning: "Learn · Track · Certify",
-    crm: "Customers · Quotations · Operations",
-    recruitment: "Discover · Evaluate · Compare",
-    event: "Plan · Reserve · Coordinate",
-    automotive: "Inventory · Sales · Customers",
-    prices: "Collect · Structure · Compare",
+    health: "QUESTION · RETRIEVAL · VALIDATION",
+    learning: "LEARN · TRACK · CERTIFY",
+    crm: "CUSTOMERS · QUOTATIONS · OPERATIONS",
+    warehouse: "RECEIVE · TRACK · PRODUCE",
+    recruitment: "CV · EXTRACTION · REVIEW",
+    personalai: "REQUEST · PERMISSIONS · TOOLS",
+    event: "PLAN · RESERVE · COORDINATE",
+    automotive: "INVENTORY · SALES · CUSTOMERS",
+    prices: "COLLECT · STRUCTURE · COMPARE",
   };
+  const iconByType: Record<string, typeof Network> = {
+    health: BrainCircuit,
+    learning: Network,
+    crm: ShieldCheck,
+    warehouse: Network,
+    recruitment: BrainCircuit,
+    personalai: Code2,
+    event: Network,
+    automotive: ShieldCheck,
+    prices: Code2,
+  };
+  const Icon = iconByType[type] ?? Network;
   return (
     <div className={`project-art art-${type}`} aria-hidden="true">
-      <div className="dashboard-preview">
-        <div className="preview-top"><span>{type === "health" ? "ORIENTATION / OVERVIEW" : type.toUpperCase() + " / OVERVIEW"}</span><span>● ● ●</span></div>
-        <div className="preview-layout">
-          <div className="preview-sidebar"><i /><i /><i /><i /><i /></div>
-          <div className="preview-main">
-            <div className="preview-title-bar" /><div className="preview-subtitle-bar" />
-            <div className="preview-cards"><div className="preview-card" /><div className="preview-card" /><div className="preview-card" /></div>
-            <div className="preview-chart" />
-          </div>
-        </div>
+      <div className="project-orbit-scene">
+        <div className="project-orbit orbit-one" />
+        <div className="project-orbit orbit-two" />
+        <div className="project-orbit-core"><Icon size={28} strokeWidth={1.4} /></div>
+        <span className="project-orbit-node node-one" />
+        <span className="project-orbit-node node-two" />
+        <span className="project-orbit-node node-three" />
       </div>
-      <span className="art-caption">{caption[type] || "Designed for real workflows"}</span>
+      <span className="art-caption">SYSTEM MAP <i /> {caption[type] || "DESIGNED FOR REAL WORKFLOWS"}</span>
     </div>
   );
 }
@@ -202,13 +234,10 @@ export default function Portfolio() {
   const [activeSection, setActiveSection] = useState("home");
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [heroLine, setHeroLine] = useState(0);
   const [expandedExperience, setExpandedExperience] = useState<number | null>(0);
   const [projectFilter, setProjectFilter] = useState("All");
   const [skillFilter, setSkillFilter] = useState("All");
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [showTop, setShowTop] = useState(false);
-  const modalCloseRef = useRef<HTMLButtonElement>(null);
   const shellRef = useRef<HTMLElement>(null);
   const experienceRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress: experienceScroll } = useScroll({
@@ -243,14 +272,24 @@ export default function Portfolio() {
   }, []);
 
   useEffect(() => {
+    let frame = 0;
     const onScroll = () => {
-      setScrolled(window.scrollY > 24);
-      setShowTop(window.scrollY > 500);
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        const nextScrolled = window.scrollY > 24;
+        const nextShowTop = window.scrollY > 500;
+        setScrolled((current) => current === nextScrolled ? current : nextScrolled);
+        setShowTop((current) => current === nextShowTop ? current : nextShowTop);
+        frame = 0;
+      });
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     const observer = new IntersectionObserver((entries) => {
       const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-      if (visible) setActiveSection(visible.target.id);
+      if (visible) {
+        const nextSection = visible.target.id;
+        setActiveSection((current) => current === nextSection ? current : nextSection);
+      }
     }, { rootMargin: "-24% 0px -60% 0px", threshold: [0, .15, .35] });
     sectionIds.forEach((id) => {
       const element = document.getElementById(id);
@@ -258,52 +297,19 @@ export default function Portfolio() {
     });
     return () => {
       window.removeEventListener("scroll", onScroll);
+      if (frame) window.cancelAnimationFrame(frame);
       observer.disconnect();
     };
   }, []);
-
-  useEffect(() => {
-    if (reducedMotion) return;
-    const timer = window.setInterval(() => setHeroLine((current) => (current + 1) % content.heroLines.length), 3600);
-    return () => window.clearInterval(timer);
-  }, [content.heroLines.length, reducedMotion]);
-
-  useEffect(() => {
-    if (!selectedProject) return;
-    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    modalCloseRef.current?.focus();
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setSelectedProject(null);
-      if (event.key === "Tab") {
-        const dialog = document.querySelector(".project-modal");
-        const focusable = dialog?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])');
-        if (!focusable?.length) return;
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault();
-          last.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault();
-          first.focus();
-        }
-      }
-    };
-    document.addEventListener("keydown", onKeyDown);
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = "";
-      previousFocus?.focus();
-    };
-  }, [selectedProject]);
 
   const navTo = (id: string) => {
     setMenuOpen(false);
     document.getElementById(id)?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" });
   };
   const projectFilterKey = ["All projects", "Full-stack", "Applied AI", "DevOps", "Other"][content.filters.indexOf(projectFilter)];
-  const filteredProjects = content.projects.filter((project) => !projectFilterKey || projectFilterKey === "All projects" || project.filter.includes(projectFilterKey));
+  const filteredProjects = content.projects
+    .filter((project) => !projectFilterKey || projectFilterKey === "All projects" || project.filter.includes(projectFilterKey))
+    .sort((a, b) => a.number.localeCompare(b.number));
   const categories = [...new Set(content.skillGroups.map((group) => group.name))];
   const skillNameFor = (index: number) => locale === "fr"
     ? ["Backend et API", "Frontend", "Bases de données", "IA et apprentissage automatique", "DevOps et cloud"][index]
@@ -317,12 +323,12 @@ export default function Portfolio() {
       <CustomCursor />
       <nav className={`navigation ${scrolled ? "is-scrolled" : ""}`} aria-label={locale === "fr" ? "Navigation principale" : "Main navigation"}>
         <div className="nav-inner">
-          <a className="brand-mark" href="#home" onClick={() => navTo("home")} aria-label="Mohamed Youssef KTHIRI — home">
+          <a className="brand-mark" href="#home" onClick={() => setMenuOpen(false)} aria-label="Mohamed Youssef KTHIRI — home">
             <span className="brand-symbol">MK</span><span className="brand-name">MOHAMED KTHIRI</span>
           </a>
           <div className={`nav-links ${menuOpen ? "is-open" : ""}`}>
             {content.nav.map((label, index) => (
-              <a className={`nav-link ${activeSection === sectionIds[index] ? "active" : ""}`} href={`#${sectionIds[index]}`} key={sectionIds[index]} onClick={(event) => { event.preventDefault(); navTo(sectionIds[index]); }}>
+              <a className={`nav-link ${activeSection === sectionIds[index] ? "active" : ""}`} href={`#${sectionIds[index]}`} key={sectionIds[index]} onClick={() => setMenuOpen(false)}>
                 {label}
                 {activeSection === sectionIds[index] && <motion.span className="nav-active-indicator" layoutId="nav-active-indicator" />}
               </a>
@@ -349,17 +355,13 @@ export default function Portfolio() {
               <span>{personal.firstName}</span><span className="surname">{personal.surname}</span>
             </motion.h1>
             <motion.p className="hero-role" variants={appear}>{personal.title}</motion.p>
-            <motion.div className="hero-rotator" aria-live="polite" variants={appear}>
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.span key={heroLine} initial={{ opacity: 0, y: 7 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -7 }} transition={{ duration: reducedMotion ? 0 : .24 }}>{content.heroLines[heroLine]}</motion.span>
-              </AnimatePresence>
-            </motion.div>
+            <HeroRotator lines={content.heroLines} reducedMotion={reducedMotion} variants={appear} />
             <motion.p className="hero-description" variants={appear}>{content.heroDescription}</motion.p>
             <motion.div className="availability" variants={appear}><span className="availability-dot" />{content.availability} <span>— {personal.availability}</span></motion.div>
             <motion.div className="hero-actions" variants={appear}>
-              <a className="button-primary" href="#projects" onPointerMove={moveMagneticTarget} onPointerLeave={resetMagneticTarget} onClick={(event) => { event.preventDefault(); navTo("projects"); }}>{content.explore}<ArrowRight size={15} /></a>
-              <a className="button-secondary" href={personal.cvPath} download="Mohamed_Youssef_Kthiri_CV.pdf" onPointerMove={moveMagneticTarget} onPointerLeave={resetMagneticTarget}><Download size={14} />{locale === "fr" ? "Télécharger mon CV" : "Download CV"}</a>
-              <a className="button-secondary" href="#contact" onPointerMove={moveMagneticTarget} onPointerLeave={resetMagneticTarget} onClick={(event) => { event.preventDefault(); navTo("contact"); }}><MessageCircle size={14} />{content.connect}</a>
+              <a className="button-primary" href="#projects" onPointerMove={moveMagneticTarget} onPointerLeave={resetMagneticTarget}>{content.explore}<ArrowRight size={15} /></a>
+              <a className="button-secondary" href="#experience" onPointerMove={moveMagneticTarget} onPointerLeave={resetMagneticTarget}><ArrowDown size={14} />{locale === "fr" ? "Découvrir mon parcours" : "Discover my journey"}</a>
+              <a className="button-secondary" href="#contact" onPointerMove={moveMagneticTarget} onPointerLeave={resetMagneticTarget}><MessageCircle size={14} />{content.connect}</a>
             </motion.div>
             <motion.div className="hero-socials" variants={appear}><ExternalSocials locale={locale} /></motion.div>
             <motion.div className="hero-proofline" variants={appear}>
@@ -369,7 +371,7 @@ export default function Portfolio() {
           </motion.div>
           <CodeVisual />
         </div>
-        <a className="scroll-cue" href="#about" onClick={(event) => { event.preventDefault(); navTo("about"); }}>SCROLL TO EXPLORE <ArrowDown size={11} /></a>
+        <a className="scroll-cue" href="#about">SCROLL TO EXPLORE <ArrowDown size={11} /></a>
       </section>
 
       <Section id="about" eyebrow={content.aboutEyebrow} title={content.aboutTitle} intro={content.aboutDescription} variants={appear}>
@@ -456,7 +458,7 @@ export default function Portfolio() {
                   <div className="project-category">{project.category}</div>
                   <p className="project-description">{project.description}</p>
                   <div className="project-stack">{project.stack.slice(0, 5).map((tech) => <span className="pill" key={tech}>{tech}</span>)}{project.stack.length > 5 && <span className="pill">+{project.stack.length - 5}</span>}</div>
-                  <button className="project-open" type="button" onClick={() => setSelectedProject(project)}>{content.viewProject}<ArrowRight size={13} /></button>
+                  <Link className="project-open" href={`/projects/${project.slug}/`}>{content.viewProject}<ArrowRight size={13} /></Link>
                 </div>
               </motion.article>
             ))}
@@ -518,25 +520,6 @@ export default function Portfolio() {
         {showTop && <motion.button className="back-to-top" type="button" aria-label={locale === "fr" ? "Retour en haut" : "Back to top"} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} onClick={() => navTo("home")}><ArrowUp size={17} /></motion.button>}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {selectedProject && <motion.div className="modal-backdrop" role="presentation" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedProject(null); }}>
-          <motion.section className="project-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" initial={{ opacity: 0, y: 18, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12, scale: .98 }} transition={{ duration: reducedMotion ? 0 : .2 }}>
-            <div className="modal-header"><div><span className="project-index">{content.modal.toUpperCase()} / {selectedProject.number}</span><h2 id="modal-title">{selectedProject.title}</h2><div className="project-category">{selectedProject.category}{selectedProject.year ? ` · ${selectedProject.year}` : ""}</div></div><button ref={modalCloseRef} className="modal-close" type="button" aria-label={content.close} onClick={() => setSelectedProject(null)}><X size={17} /></button></div>
-            <div className="modal-body">
-              <p>{selectedProject.description}</p>
-              <h3>{locale === "fr" ? "Le problème" : "The problem"}</h3><p>{selectedProject.problem}</p>
-              <h3>{locale === "fr" ? "Approche technique" : "Technical approach"}</h3><p>{selectedProject.implementation}</p>
-              <h3>{locale === "fr" ? "Fonctionnalités clés" : "Key features"}</h3><ul className="detail-list">{selectedProject.features.map((feature) => <li key={feature}>{feature}</li>)}</ul>
-              <h3>{locale === "fr" ? "Technologies" : "Technologies"}</h3><div className="tech-list">{selectedProject.stack.map((tech) => <span className="pill" key={tech}>{tech}</span>)}</div>
-              {selectedProject.note && <p className="health-note">{selectedProject.note}</p>}
-              {(selectedProject.github || selectedProject.demo) ? <div className="modal-links">
-                {selectedProject.github && <a className="button-secondary" href={selectedProject.github} target="_blank" rel="noreferrer"><Github size={14} />GitHub<ExternalLink size={12} /></a>}
-                {selectedProject.demo && <a className="button-primary" href={selectedProject.demo} target="_blank" rel="noreferrer"><ExternalLink size={14} />{locale === "fr" ? "Démo en direct" : "Live demo"}</a>}
-              </div> : <p style={{ marginTop: 16, fontSize: 10 }}>{content.noLinks}</p>}
-            </div>
-          </motion.section>
-        </motion.div>}
-      </AnimatePresence>
     </main>
   );
 }
